@@ -1,8 +1,9 @@
 FROM python:3.11-slim
 
-# Tesseract + idiomas JP
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Instalar Tesseract e idiomas japoneses
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert libtesseract-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

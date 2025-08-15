@@ -5,10 +5,38 @@ from PIL import Image
 import pytesseract
 from statistics import mean
 
-OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
-MODEL = os.getenv("MODEL_NAME", "qwen2.5:3b")
+DEFAULT_OLLAMA = "http://ollama.railway.internal:11434" 
+DEFAULT_MODEL = "qwen2.5:3b"
+
+OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", DEFAULT_OLLAMA).rstrip("/")
+MODEL = os.getenv("MODEL_NAME", DEFAULT_MODEL)
 
 app = FastAPI()
+
+# --- opcional: checa na inicialização
+@app.on_event("startup")
+async def check_cfg():
+    if not OLLAMA_URL.startswith("http"):
+        raise RuntimeError(f"OLLAMA_BASE_URL inválida: {OLLAMA_URL}")
+    # ping rápido no Ollama
+    try:
+        async with httpx.AsyncClient(timeout=5) as cli:
+            r = await cli.get(f"{OLLAMA_URL}/api/tags")
+            r.raise_for_status()
+    except Exception as e:
+        # não derruba se quiser, só loga:
+        print(f"[WARN] Não consegui falar com Ollama em {OLLAMA_URL}: {e}")
+
+@app.get("/health")
+async def health():
+    try:
+        async with httpx.AsyncClient(timeout=5) as cli:
+            r = await cli.get(f"{OLLAMA_URL}/api/tags")
+            r.raise_for_status()
+        return {"status":"ok","ollama":True,"model":MODEL}
+    except Exception as e:
+        return {"status":"degraded","ollama":False,"model":MODEL,"error":str(e)}
+
 
 def ocr_lang(im, lang):
     data = pytesseract.image_to_data(im, lang=lang, output_type=pytesseract.Output.DICT)
