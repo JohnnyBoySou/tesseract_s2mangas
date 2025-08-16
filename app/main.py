@@ -5,7 +5,7 @@ from PIL import Image
 import pytesseract
 from statistics import mean
 
-DEFAULT_OLLAMA = "http://ollama.railway.internal:11434" 
+DEFAULT_OLLAMA = "http://ollama.railway.internal:8080" 
 DEFAULT_MODEL = "qwen2.5:3b"
 
 OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", DEFAULT_OLLAMA).rstrip("/")
