@@ -11,27 +11,44 @@ MODEL = os.getenv("MODEL_NAME", "qwen2.5:3b")
 
 app = FastAPI()
 
+# --- Endpoint root ---
+@app.get("/")
+async def root():
+    return {"message": "Tesseract S2Mangas Service", "status": "running"}
+
 # --- Healthcheck ---
 @app.get("/health")
 async def health():
+    # Verificar se o Tesseract está funcionando
     try:
-        async with httpx.AsyncClient(timeout=5) as cli:
+        # Teste básico do Tesseract
+        test_image = Image.new('L', (100, 100), 255)
+        pytesseract.image_to_string(test_image, lang='eng')
+        tesseract_status = "ok"
+    except Exception as e:
+        tesseract_status = f"error: {str(e)}"
+    
+    # Verificar Ollama (opcional)
+    ollama_status = "unknown"
+    try:
+        async with httpx.AsyncClient(timeout=3) as cli:
             r = await cli.get(f"{OLLAMA_URL}/api/tags")
             r.raise_for_status()
             models = [m["name"] for m in r.json().get("models", [])]
-            return {
-                "status": "ok",
-                "ollama_url": OLLAMA_URL,
-                "configured_model": MODEL,
-                "available_models": models
-            }
+            ollama_status = "ok"
     except Exception as e:
-        return {
-            "status": "error",
-            "ollama_url": OLLAMA_URL,
-            "configured_model": MODEL,
-            "error": str(e)
-        }
+        ollama_status = f"error: {str(e)}"
+    
+    # Status geral baseado no Tesseract
+    overall_status = "ok" if tesseract_status == "ok" else "error"
+    
+    return {
+        "status": overall_status,
+        "tesseract": tesseract_status,
+        "ollama": ollama_status,
+        "ollama_url": OLLAMA_URL,
+        "configured_model": MODEL
+    }
 
 # --- Funções auxiliares de OCR ---
 def ocr_with_lang(im, lang):
